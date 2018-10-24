@@ -43,45 +43,67 @@ export function checkBody(body: any, params: string[]): boolean {
 export function createRouter(requests: IRequest[]): Router {
   const router = Router()
   requests.forEach((request) => {
-    const handler = async (req: Request, res: Response) => {
-      try {
-        const bodyValid = checkBody(req.body, request.verification.body)
-        if (!bodyValid) {
-          throw { code: 400, message: 'Malformed request body' }
-        }
-        if (request.authRequired) {
-          if (req.user === null) {
-            throw { code: 400, message: 'Check JWT token' }
+    const handlers = [
+      jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }),
+      (req: Request, res: Response, next: () => any) => {
+        try {
+          const bodyValid = checkBody(req.body, request.verification.body)
+          if (!bodyValid) {
+            throw { code: 400, message: 'Malformed request body' }
           }
-          if (!req.user.data.verified) {
-            throw { code: 400, message: 'User is not verified' }
-          }
-          const userValid = await request.verification.user(req.user.data)
-          if (!userValid) {
-            throw { code: 400, message: 'User is not verified' }
-          }
+          next()
+        } catch (e) {
+          res.status(400).send(e)
         }
-        const valid = await request.verification.beforeAction(req.body, (req.user) ? req.user.data : null)
-        if (!valid) {
-          throw { code: 400, message: 'Invalid request, probably not allowed' }
+      },
+      async (req: Request, res: Response, next: () => any) => {
+        try {
+          if (request.authRequired) {
+            if (req.user === null) {
+              throw { code: 403, message: 'Authentication is required' }
+            }
+            if (!req.user.data.verified) {
+              throw { code: 400, message: 'User is not verified' }
+            }
+            const userValid = await request.verification.user(req.user.data)
+            if (!userValid) {
+              throw { code: 400, message: 'Invalid user passed' }
+            }
+          }
+          next()
+        } catch (e) {
+          res.status(400).send(e)
         }
-
-        const actionResponse = await request.action(req.body, (req.user) ? req.user.data : null)
-        res.status(200).send(actionResponse)
-      } catch (e) {
-        error(e)
-        res.status(400).send(JSON.stringify(e))
-      }
-    }
+      },
+      async (req: Request, res: Response, next: () => any) => {
+        try {
+          const valid = await request.verification.beforeAction(req.body, (req.user) ? req.user.data : null)
+          if (!valid) {
+            throw { code: 400, message: 'Invalid request, access denied' }
+          }
+          next()
+        } catch (e) {
+          res.status(400).send(e)
+        }
+      },
+      async (req: Request, res: Response, next: () => any) => {
+        try {
+          const actionResponse = await request.action(req.body, (req.user) ? req.user.data : null)
+          res.status(200).send(actionResponse)
+        } catch (e) {
+          res.status(400).send(e)
+        }
+      },
+    ]
 
     if (request.method === RequestMethod.GET) {
-      router.get(request.path, jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }), handler)
+      router.get(request.path, handlers)
     } else if (request.method === RequestMethod.POST) {
-      router.post(request.path, jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }), handler)
+      router.post(request.path, handlers)
     } else if (request.method === RequestMethod.PUT) {
-      router.put(request.path, jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }), handler)
+      router.put(request.path, handlers)
     } else if (request.method === RequestMethod.DELETE) {
-      router.delete(request.path, jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }), handler)
+      router.delete(request.path, handlers)
     }
   })
   return router
