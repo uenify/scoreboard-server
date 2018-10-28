@@ -33,20 +33,20 @@ function generateToken(payload: object): string {
 
 export async function register(data: IUserRegisterData) {
   if (data.role !== 'Jury' && data.role !== 'Competitor') {
-    throw { code: 400, message: `Cannot register user ${data.email} with role ${data.role}` }
+    throw { status: 400, message: `Cannot register user ${data.email} with role ${data.role}` }
   }
   if (data.password == null || data.email == null || data.name == null || data.name.first == null) {
-    throw { code: 400, message: `Cannot register user ${data.email}, malformed request` }
+    throw { status: 400, message: `Cannot register user ${data.email}, malformed request` }
   }
   if (data.password.length < 8) {
-    throw { code: 400, message: `Cannot register user ${data.email}, password is too short` }
+    throw { status: 400, message: `Cannot register user ${data.email}, password is too short` }
   }
   if (!validator.isEmail(data.email)) {
-    throw { code: 400, message: `Cannot register user ${data.email}, malformed email` }
+    throw { status: 400, message: `Cannot register user ${data.email}, malformed email` }
   }
   const ifUserWasRegisteredBefore = await User.findOne({ email: data.email })
   if (ifUserWasRegisteredBefore != null) {
-    throw { code: 400, message: `Cannot register user ${data.email}, user already exists` }
+    throw { status: 400, message: `Cannot register user ${data.email}, user already exists` }
   }
   const hash = generateHash(data.password)
 
@@ -71,7 +71,7 @@ export async function register(data: IUserRegisterData) {
 export async function login(email: string, password: string) {
   let user = await User.findOne({ email })
   if (!user) {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
 
   const hash = user.hash
@@ -82,14 +82,14 @@ export async function login(email: string, password: string) {
     user = await user.save()
     return { token, verified: user.verified }
   } else {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
 }
 
 export async function checkToken(email: string, token: string) {
   const user = await User.findOne({ email })
   if (!user) {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
 
   return user.token === token
@@ -98,13 +98,13 @@ export async function checkToken(email: string, token: string) {
 export async function sendVerificationMail(email: string, token: string) {
   const user = await User.findOne({ email })
   if (!user) {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
   if (!checkToken(email, token)) {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
   if (user.verified) {
-    throw { code: 400, message: `This E-Mail address is already verified` }
+    throw { status: 400, message: `This E-Mail address is already verified` }
   }
 
   await transporter.sendMail({
@@ -122,7 +122,7 @@ export async function sendVerificationMail(email: string, token: string) {
 export async function verifyEmail(email: string, bytes: string) {
   const user = await User.findOne({ email })
   if (!user) {
-    throw { code: 400, message: `Incorrent email or password` }
+    throw { status: 400, message: `Incorrent email or password` }
   }
   const uri: string[] = user.verificationURL.split('/')
   if (uri[uri.length - 1] === bytes) {
@@ -130,5 +130,5 @@ export async function verifyEmail(email: string, bytes: string) {
     await user.save()
     return { verified: true }
   }
-  throw { code: 400, message: 'Incorrect bytes' }
+  throw { status: 400, message: 'Incorrect bytes' }
 }

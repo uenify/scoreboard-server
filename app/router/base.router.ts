@@ -1,7 +1,7 @@
 import { Request, Response, Router } from 'express'
 import jwt from 'express-jwt'
 import _ from 'lodash'
-import { error } from '../logger'
+import { error, log } from '../logger'
 import { secret } from '../secret'
 
 export enum RequestMethod {
@@ -45,18 +45,15 @@ export function createRouter(requests: IRequest[]): Router {
   requests.forEach((request) => {
     const handlers = [
       jwt({ secret: secret.jwt, credentialsRequired: request.authRequired }),
-      (req: Request, res: Response, next: () => any) => {
-        try {
-          const bodyValid = checkBody(req.body, request.verification.body)
-          if (!bodyValid) {
-            throw { code: 400, message: 'Malformed request body' }
-          }
-          next()
-        } catch (e) {
-          res.status(400).send(e)
+      (req: Request, res: Response, next: any) => {
+        const body = (request.method === RequestMethod.GET) ? req.query : req.body
+        const bodyValid = checkBody(body, request.verification.body)
+        if (!bodyValid) {
+          throw { code: 400, message: 'Malformed request body' }
         }
+        next()
       },
-      async (req: Request, res: Response, next: () => any) => {
+      async (req: Request, res: Response, next: any) => {
         try {
           if (request.authRequired) {
             if (req.user === null) {
@@ -72,26 +69,29 @@ export function createRouter(requests: IRequest[]): Router {
           }
           next()
         } catch (e) {
-          res.status(400).send(e)
+          next(e)
         }
       },
-      async (req: Request, res: Response, next: () => any) => {
+      async (req: Request, res: Response, next: any) => {
         try {
-          const valid = await request.verification.beforeAction(req.body, (req.user) ? req.user.data : null)
+          const body = (request.method === RequestMethod.GET) ? req.query : req.body
+          const valid = await request.verification.beforeAction(body, (req.user) ? req.user.data : null)
           if (!valid) {
-            throw { code: 400, message: 'Invalid request, access denied' }
+            throw { status: 400, message: 'Invalid request, access denied' }
           }
           next()
         } catch (e) {
-          res.status(400).send(e)
+          next(e)
         }
       },
-      async (req: Request, res: Response, next: () => any) => {
+      async (req: Request, res: Response, next: any) => {
         try {
-          const actionResponse = await request.action(req.body, (req.user) ? req.user.data : null)
-          res.status(200).send(actionResponse)
+        const body = (request.method === RequestMethod.GET) ? req.query : req.body
+        const actionResponse = await request.action(body, (req.user) ? req.user.data : null)
+        log(actionResponse)
+        res.status(200).send(actionResponse)
         } catch (e) {
-          res.status(400).send(e)
+          next(e)
         }
       },
     ]
@@ -105,6 +105,11 @@ export function createRouter(requests: IRequest[]): Router {
     } else if (request.method === RequestMethod.DELETE) {
       router.delete(request.path, handlers)
     }
+  })
+
+  router.use((err: any, req: Request, res: Response, next: () => any) => {
+    error(err.message)
+    res.status(400).send(err)
   })
   return router
 }

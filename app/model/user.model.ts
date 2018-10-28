@@ -20,6 +20,15 @@ export interface IUserRegisterData {
   password: string,
 }
 
+export interface IUserInfo {
+  email: string
+  name: {
+    first: string,
+    middle?: string,
+    last?: string,
+  },
+}
+
 export interface IUser extends Document {
   email: string,
   name: {

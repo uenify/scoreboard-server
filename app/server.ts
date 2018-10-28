@@ -13,11 +13,17 @@ const mongooseurl = 'mongodb://localhost:27017/test';
     log(`Initializing`)
     const app: Application = express()
     app.use(bodyParser.json())
+    app.use(bodyParser.urlencoded())
     app.use((req, res, next) => {
       log(`Requested: ${chalk.yellow(req.method)} ${chalk.blue(req.url)}`,
           `By: ${chalk.green(req.ip)}`,
           `Payload: ${chalk.cyan(JSON.stringify(req.body))}`,
           `Cookies: ${chalk.cyan(req.rawHeaders.toString())}`)
+      next()
+    })
+    app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*')
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
       next()
     })
     app.use('/competition', competitionRouter)

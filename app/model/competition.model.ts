@@ -1,8 +1,16 @@
 import { Double } from 'bson'
 import { Document, Model, model, Schema, Types } from 'mongoose'
 import { ITask, TaskSchema } from './task.model'
+import { IUserInfo } from './user.model'
 
 export interface IRound {
+  start: Date
+  end: Date
+}
+export interface ICompetitionBasic {
+  name: string
+  description: string
+  location: string
   start: Date
   end: Date
 }
@@ -11,8 +19,8 @@ export interface ICompetition extends Document {
   description: string
   location: string
   rounds: IRound[]
-  creator: string,
-  juries: string[],
+  creator: IUserInfo,
+  juries: IUserInfo[],
   tasks: Array<Types.DocumentArray<ITask>>
 }
 
@@ -21,8 +29,8 @@ export const CompetitionSchema = new Schema({
   description: {type: String, required: 'Enter description'},
   location: {type: String, required: 'Enter location'},
   rounds: { type: [{ _id: false, start: Date, end: Date }], default: [] },
-  creator: String,
-  juries: [String],
+  creator: {email: String, name: {first: String, middle: String, last: String}},
+  juries: [{_id: false, email: String, name: {first: String, middle: String, last: String}}],
   tasks: {type: [[TaskSchema]], default: []},
 })
 

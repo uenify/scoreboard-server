@@ -1,4 +1,4 @@
-import { create, get, getAll, getRaw, remove, update, getDetailed } from '../controller/competition.controller'
+import { create, get, getAll, getDetailed, getRaw, remove, update } from '../controller/competition.controller'
 import { createRouter, IRequest, IUserPayload, RequestMethod } from './base.router'
 
 const requests: IRequest[] = [
@@ -53,7 +53,7 @@ const requests: IRequest[] = [
       user: async (user: IUserPayload) => (user.role === 'Jury' || user.role === 'SupervisorAdmin'),
       beforeAction: async (body, user) => {
         const competition = await getRaw(body.data._id)
-        return (competition.juries.indexOf(user.email) !== -1)
+        return (competition.juries.find((jury) => jury.email === user.email) !== null)
       },
     },
     action: async (body, user) => {
@@ -70,7 +70,7 @@ const requests: IRequest[] = [
       user: async (user: IUserPayload) => (user.role === 'Jury' || user.role === 'SupervisorAdmin'),
       beforeAction: async (body, user) => {
         const competition = await getRaw(body.id)
-        return (competition.creator === user.email)
+        return (competition.creator.email === user.email)
       },
     },
     action: async (body, user) => {
@@ -87,7 +87,7 @@ const requests: IRequest[] = [
       user: async (user: IUserPayload) => (user.role === 'Jury' || user.role === 'SupervisorAdmin'),
       beforeAction: async (body, user) => {
         const competition = await getRaw(body.id)
-        return (competition.creator === user.email)
+        return (competition.juries.find((jury) => jury.email === user.email) !== null)
       },
     },
     action: async (body, user) => {
