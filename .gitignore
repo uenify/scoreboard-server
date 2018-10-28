@@ -2,3 +2,4 @@ node_modules/
 .vscode/
 build/
 app/sercret.ts
+.DS_Store
