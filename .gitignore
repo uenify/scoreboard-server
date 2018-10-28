@@ -1,5 +1,5 @@
 node_modules/
 .vscode/
 build/
-app/sercret.ts
+app/secret.ts
 .DS_Store
