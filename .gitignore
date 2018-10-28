@@ -3,3 +3,4 @@ node_modules/
 build/
 app/secret.ts
 .DS_Store
+yarn.lock
